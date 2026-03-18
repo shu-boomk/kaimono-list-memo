@@ -906,14 +906,14 @@
     }
     if (Notification.permission === 'granted') {
       if (notifMuted) {
-        btn.textContent = '🔕 通知オフ中（タップでオン）';
+        btn.textContent = '通知オフ中（タップでオン）';
         btn.classList.remove('granted');
       } else {
-        btn.textContent = '🔔 通知オン中（タップでオフ）';
+        btn.textContent = '通知オン中（タップでオフ）';
         btn.classList.add('granted');
       }
     } else {
-      btn.textContent = '🔔 通知をオンにする';
+      btn.textContent = '通知をオンにする';
       btn.classList.remove('granted','hidden');
     }
   }
@@ -934,7 +934,7 @@
       notifMuted = !notifMuted;
       localStorage.setItem('notif_muted', notifMuted ? 'true' : 'false');
       updateNotifBtn();
-      showToast(notifMuted ? '🔕 通知をオフにしました' : '🔔 通知をオンにしました');
+      showToast(notifMuted ? '通知をオフにしました' : '通知をオンにしました');
       return;
     }
     // 未許可 → 許可ダイアログを表示
