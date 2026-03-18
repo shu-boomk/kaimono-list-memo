@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="おかいものメモ">
+<meta name="theme-color" content="#3D2B1F">
+<title>おかいものメモ</title>
+<link rel="manifest" id="manifestLink">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Kaisei+Opti:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream:#FDF6EC; --brown-dark:#3D2B1F; --brown-mid:#7A5C44;
+    --brown-light:#C4956A; --peach:#F2B880;
+    --soft-green:#8BAF8D; --soft-green-dark:#4A7D4C;
+    --safe-bottom:env(safe-area-inset-bottom,0px);
+    --safe-top:env(safe-area-inset-top,0px);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{height:100%;height:-webkit-fill-available}
+  body{width:100%;height:100%;height:-webkit-fill-available;background:var(--cream);font-family:'Zen Maru Gothic',sans-serif;color:var(--brown-dark);overflow:hidden;position:fixed;top:0;left:0;right:0;bottom:0}
+
+  /* SCREENS */
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none}
+  .screen.active{opacity:1;pointer-events:all}
+
+  /* SPLASH */
+  #splash{background:var(--brown-dark);align-items:center;justify-content:center;transition:opacity .7s ease,transform .7s ease}
+  #splash.out{opacity:0;transform:scale(1.05);pointer-events:none}
+  .splash-title{font-family:'Kaisei Opti',serif;font-size:28px;color:var(--peach);margin-top:20px;letter-spacing:.12em;animation:fadeUp .7s ease .7s both}
+  .splash-sub{font-size:13px;color:var(--brown-light);margin-top:8px;letter-spacing:.2em;animation:fadeUp .7s ease .9s both}
+  .splash-dots{display:flex;gap:8px;margin-top:52px;animation:fadeUp .6s ease 1.1s both}
+  .splash-dots span{width:8px;height:8px;border-radius:50%;background:var(--brown-light);animation:dotPulse 1.2s ease infinite}
+  .splash-dots span:nth-child(2){animation-delay:.2s}
+  .splash-dots span:nth-child(3){animation-delay:.4s}
+
+  /* TOP */
+  #top{background:var(--cream);overflow-y:auto;-webkit-overflow-scrolling:touch;transition:opacity .5s ease,transform .5s ease;transform:translateY(16px)}
+  #top.active{transform:translateY(0)}
+  #top::before{content:'';position:fixed;inset:0;background:radial-gradient(circle at 20% 20%,rgba(196,149,106,.08) 0%,transparent 50%),radial-gradient(circle at 80% 80%,rgba(139,175,141,.07) 0%,transparent 50%);pointer-events:none}
+  .top-inner{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:0 24px;padding-top:calc(var(--safe-top) + 40px);padding-bottom:calc(var(--safe-bottom) + 40px);min-height:100%;display:flex;flex-direction:column}
+  .top-header{text-align:center;animation:fadeUp .6s ease .05s both}
+  .top-title{font-family:'Kaisei Opti',serif;font-size:26px;margin-top:12px;letter-spacing:.08em}
+  .top-date{font-size:12px;color:var(--brown-mid);margin-top:6px;letter-spacing:.15em}
+  .divider{display:flex;align-items:center;gap:12px;margin:32px 0 24px;animation:fadeUp .6s ease .15s both}
+  .divider-line{flex:1;height:1px;background:linear-gradient(to right,transparent,var(--brown-light),transparent)}
+  .divider-label{font-size:11px;color:var(--brown-mid);letter-spacing:.2em;white-space:nowrap}
+  .cards{display:flex;flex-direction:column;gap:16px}
+  .card{border-radius:22px;padding:24px 20px;cursor:pointer;position:relative;overflow:hidden;border:none;text-align:left;width:100%;transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s}
+  .card:active{transform:scale(.97)!important}
+  .card:hover{transform:translateY(-3px)}
+  .card::after{content:'';position:absolute;width:100px;height:100px;border-radius:50%;right:-20px;bottom:-20px;opacity:.18}
+  .card-personal{background:linear-gradient(135deg,#F5E6D3,#EDD5B8);box-shadow:0 8px 32px rgba(196,149,106,.22),0 2px 8px rgba(61,43,31,.08);animation:fadeUp .6s ease .25s both}
+  .card-personal::after{background:var(--brown-light)}
+  .card-shared{background:linear-gradient(135deg,#D8EBD8,#C4DFC6);box-shadow:0 8px 32px rgba(139,175,141,.25),0 2px 8px rgba(61,43,31,.08);animation:fadeUp .6s ease .38s both}
+  .card-shared::after{background:var(--soft-green)}
+  .card-title{font-family:'Kaisei Opti',serif;font-size:19px;letter-spacing:.06em;margin-bottom:5px}
+  .card-desc{font-size:12px;color:var(--brown-mid);line-height:1.7}
+  .card-badge{position:absolute;top:16px;right:16px;font-size:10px;letter-spacing:.15em;padding:3px 9px;border-radius:20px;font-weight:700}
+  .card-personal .card-badge{background:rgba(196,149,106,.25);color:var(--brown-mid)}
+  .card-shared .card-badge{background:rgba(139,175,141,.3);color:var(--soft-green-dark)}
+  .card-arrow{position:absolute;right:18px;bottom:18px;font-size:16px;opacity:.4;transition:opacity .2s,transform .2s}
+  .card:hover .card-arrow{opacity:.7;transform:translateX(4px)}
+  .top-footer{margin-top:auto;padding-top:32px;text-align:center;animation:fadeUp .6s ease .5s both}
+  .top-footer-text{font-size:11px;color:var(--brown-light);letter-spacing:.15em}
+  .notif-btn{margin-top:12px;background:none;border:1px solid rgba(196,149,106,.35);border-radius:20px;padding:7px 18px;font-size:11px;color:var(--brown-light);cursor:pointer;font-family:'Zen Maru Gothic',sans-serif;letter-spacing:.08em;transition:all .2s}
+  .notif-btn:active{background:rgba(196,149,106,.1)}
+  .notif-btn.granted{color:var(--soft-green-dark);border-color:rgba(139,175,141,.4)}
+  .notif-btn.hidden{display:none}
+
+  /* MEMO SCREENS */
+  .memo-screen{transition:opacity .4s ease,transform .4s ease;transform:translateX(32px)}
+  .memo-screen.active{transform:translateX(0)}
+  .memo-screen.slide-out{transform:translateX(40px);opacity:0;pointer-events:none}
+  .memo-header{flex-shrink:0;padding-top:calc(var(--safe-top) + 44px);padding-left:16px;padding-right:20px;padding-bottom:16px;display:flex;align-items:flex-end;gap:10px}
+  .memo-header-personal{background:linear-gradient(160deg,#F0DFC8,#F9EEE0)}
+  .memo-header-shared{background:linear-gradient(160deg,#C8DEC9,#E3F0E4)}
+  .back-btn{background:none;border:none;cursor:pointer;font-size:20px;padding:6px 8px 6px 4px;color:var(--brown-mid);transition:transform .2s;flex-shrink:0;margin-bottom:1px}
+  .back-btn:active{transform:scale(.82)}
+  .memo-header-text{flex:1}
+  .memo-header-title{font-family:'Kaisei Opti',serif;font-size:20px;letter-spacing:.06em}
+  .memo-header-count{font-size:11px;color:var(--brown-mid);margin-top:3px}
+  .history-btn{background:none;border:none;cursor:pointer;font-size:11px;color:var(--brown-mid);padding:6px 10px;border-radius:20px;border:1px solid rgba(196,149,106,.4);letter-spacing:.1em;transition:all .2s;flex-shrink:0;margin-bottom:1px}
+  .history-btn:active{transform:scale(.92);background:rgba(196,149,106,.1)}
+  #sharedMemo .history-btn{border-color:rgba(139,175,141,.5);color:var(--soft-green-dark)}
+  #sharedMemo .history-btn:active{background:rgba(139,175,141,.15)}
+
+  /* SYNC INDICATOR */
+  .sync-badge{font-size:10px;color:var(--soft-green-dark);background:rgba(139,175,141,.2);border-radius:20px;padding:3px 8px;letter-spacing:.05em;flex-shrink:0;margin-bottom:1px;animation:fadeUp .4s ease both}
+
+  /* LIST BODY */
+  .memo-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 16px 10px;background:var(--cream)}
+  .section-label{font-size:11px;color:var(--brown-light);letter-spacing:.2em;margin:16px 4px 8px;font-weight:700}
+  .section-label:first-child{margin-top:2px}
+  .item{display:flex;align-items:center;gap:10px;background:white;border-radius:14px;padding:12px;margin-bottom:9px;box-shadow:0 2px 10px rgba(61,43,31,.07);transition:opacity .3s,transform .3s,background .25s;animation:itemIn .35s cubic-bezier(.34,1.56,.64,1) both}
+  .item.done{background:#F6F1EB;box-shadow:none;opacity:.5}
+  .item.removing{opacity:0;transform:translateX(28px) scale(.95)}
+  #sharedList .item.done{background:#EDF5EE}
+  #sharedList .item.done .item-name{color:var(--soft-green)}
+  #sharedList .item.done .qty-stepper-num{color:var(--soft-green)}
+  .check-btn{width:26px;height:26px;flex-shrink:0;border-radius:50%;border:2px solid var(--brown-light);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s cubic-bezier(.34,1.56,.64,1);color:transparent;font-size:12px;font-weight:700}
+  .check-btn:active{transform:scale(.82)}
+  .item-personal.done .check-btn{background:var(--brown-light);border-color:var(--brown-light);color:white}
+  .item-shared.done .check-btn{background:var(--soft-green);border-color:var(--soft-green);color:white}
+  .item-main{flex:1;min-width:0}
+  .item-name{font-size:14px;transition:color .25s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item.done .item-name{text-decoration:line-through;color:var(--brown-light)}
+  .qty-stepper{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0}
+  .qty-stepper-num{font-size:15px;font-weight:700;color:var(--brown-dark);min-width:24px;text-align:center;line-height:1}
+  .item.done .qty-stepper-num{color:var(--brown-light)}
+  .qty-btn{background:none;border:none;cursor:pointer;font-size:9px;color:var(--brown-light);padding:1px 6px;line-height:1;border-radius:4px;transition:all .15s}
+  .qty-btn:active{transform:scale(.8);color:var(--brown-dark)}
+  .item.done .qty-btn{pointer-events:none;opacity:0}
+  .delete-btn{background:none;border:none;cursor:pointer;font-size:14px;color:#CCC;padding:6px;border-radius:50%;transition:color .2s,transform .2s;flex-shrink:0}
+  .delete-btn:active{color:#e87;transform:scale(.8)}
+
+  /* DRAG */
+  .drag-handle{display:flex;align-items:center;justify-content:center;width:22px;flex-shrink:0;cursor:grab;opacity:.3;font-size:16px;padding:4px 0;touch-action:none;user-select:none;-webkit-user-select:none}
+  .drag-handle:active{cursor:grabbing;opacity:.7}
+  .item.done .drag-handle{opacity:.15;pointer-events:none}
+  .item.dragging{opacity:.4;transform:scale(.97);box-shadow:none!important}
+  .item.drag-over{border-top:2px solid var(--brown-light)}
+  #sharedList .item.drag-over{border-top-color:var(--soft-green)}
+
+  /* INPUT BAR */
+  .input-bar{flex-shrink:0;padding:10px 16px;padding-bottom:calc(var(--safe-bottom) + 12px);border-top:1px solid rgba(196,149,106,.15);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);position:relative;z-index:10}
+  .input-bar-personal{background:rgba(253,246,236,.95)}
+  .input-bar-shared{background:rgba(232,245,233,.95)}
+  .input-row{display:flex;gap:8px;align-items:center;max-width:480px;margin:0 auto}
+  .input-name{flex:1;border:none;outline:none;background:white;border-radius:12px;padding:11px 13px;font-size:15px;font-family:'Zen Maru Gothic',sans-serif;color:var(--brown-dark);box-shadow:0 2px 10px rgba(61,43,31,.08);min-width:0}
+  .input-name::placeholder{color:#CCC}
+  .input-qty-wrap{display:flex;flex-direction:column;align-items:center;gap:1px;flex-shrink:0;background:white;border-radius:12px;padding:6px 10px;box-shadow:0 2px 10px rgba(61,43,31,.08);min-width:52px}
+  .input-qty-num{font-size:16px;font-weight:700;color:var(--brown-dark);line-height:1;min-width:20px;text-align:center}
+  .input-qty-btn{background:none;border:none;cursor:pointer;font-size:9px;color:var(--brown-light);padding:2px 8px;border-radius:4px;transition:all .15s;line-height:1}
+  .input-qty-btn:active{transform:scale(.8);color:var(--brown-dark)}
+  .add-btn{width:46px;height:46px;border-radius:50%;border:none;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s;flex-shrink:0;color:white}
+  .add-btn:active{transform:scale(.87)}
+  .add-btn-personal{background:linear-gradient(135deg,var(--peach),var(--brown-light));box-shadow:0 4px 16px rgba(196,149,106,.4)}
+  .add-btn-shared{background:linear-gradient(135deg,#A8D4AA,var(--soft-green));box-shadow:0 4px 16px rgba(139,175,141,.4)}
+
+  /* EMPTY */
+  .empty-state{text-align:center;padding:50px 20px;color:var(--brown-light);font-size:13px;line-height:2.2;animation:fadeUp .5s ease both}
+  .empty-icon{font-size:44px;display:block;margin-bottom:12px;opacity:.45}
+
+  /* HISTORY MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .3s ease}
+  .modal-overlay.open{opacity:1;pointer-events:all}
+  .modal-sheet{width:100%;max-height:75vh;border-radius:24px 24px 0 0;padding-bottom:calc(var(--safe-bottom) + 16px);display:flex;flex-direction:column;transform:translateY(100%);transition:transform .4s cubic-bezier(.34,1.2,.64,1)}
+  .modal-overlay.open .modal-sheet{transform:translateY(0)}
+  .modal-sheet-personal{background:#FDF6EC}
+  .modal-sheet-shared{background:#F0F8F0}
+  .modal-handle{width:40px;height:4px;border-radius:2px;background:rgba(0,0,0,.15);margin:12px auto 0;flex-shrink:0}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;flex-shrink:0}
+  .modal-title{font-family:'Kaisei Opti',serif;font-size:18px;letter-spacing:.06em}
+  .modal-close{background:none;border:none;cursor:pointer;font-size:20px;color:var(--brown-mid);padding:4px}
+  .modal-sheet-shared .modal-close{color:var(--soft-green-dark)}
+  .modal-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 16px 16px}
+  .history-item{display:flex;align-items:center;gap:10px;padding:11px 14px;background:white;border-radius:12px;margin-bottom:8px;box-shadow:0 1px 6px rgba(61,43,31,.06);animation:itemIn .3s ease both}
+  .history-icon{font-size:16px;flex-shrink:0;opacity:.6}
+  .history-main{flex:1;min-width:0}
+  .history-name{font-size:14px;color:var(--brown-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .history-meta{font-size:11px;color:var(--brown-light);margin-top:2px}
+  .history-restore-btn{background:none;border:1px solid rgba(196,149,106,.4);border-radius:20px;padding:4px 10px;font-size:11px;color:var(--brown-mid);cursor:pointer;flex-shrink:0;font-family:'Zen Maru Gothic',sans-serif;transition:all .2s}
+  .history-restore-btn:active{transform:scale(.92);background:rgba(196,149,106,.1)}
+  .modal-sheet-shared .history-restore-btn{border-color:rgba(139,175,141,.5);color:var(--soft-green-dark)}
+  .modal-sheet-shared .history-restore-btn:active{background:rgba(139,175,141,.15)}
+  .history-empty{text-align:center;padding:40px 20px;color:var(--brown-light);font-size:13px}
+  .modal-clear-btn{margin:8px 16px 0;background:none;border:none;cursor:pointer;font-size:12px;color:#CCA;letter-spacing:.1em;text-align:center;width:calc(100% - 32px);padding:10px;font-family:'Zen Maru Gothic',sans-serif}
+  .modal-sheet-shared .modal-clear-btn{color:#9DC49F}
+
+  /* TOAST */
+  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--brown-dark);color:var(--cream);padding:10px 22px;border-radius:40px;font-size:13px;opacity:0;pointer-events:none;transition:transform .35s cubic-bezier(.34,1.56,.64,1),opacity .35s;white-space:nowrap;z-index:200}
+  .toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+
+  /* SVG ILLUSTRATIONS */
+  .illust{display:block}
+  .illust-splash{width:96px;height:96px;animation:bagBounce .9s cubic-bezier(.34,1.56,.64,1) .3s both}
+  .illust-top{width:64px;height:64px;animation:float 4s ease-in-out infinite}
+  .illust-card{width:48px;height:48px;margin-bottom:12px}
+  .illust-header{width:40px;height:40px;flex-shrink:0}
+
+  /* LOGIN SCREEN */
+  #login{background:var(--brown-dark);align-items:center;justify-content:center;padding:0 32px;transition:opacity .5s ease,transform .5s ease;transform:translateY(16px)}
+  #login.active{transform:translateY(0)}
+  .login-box{width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;gap:0}
+  .login-illust{width:72px;height:72px;margin-bottom:20px;animation:float 4s ease-in-out infinite}
+  .login-title{font-family:'Kaisei Opti',serif;font-size:22px;color:var(--peach);letter-spacing:.1em;margin-bottom:6px}
+  .login-sub{font-size:12px;color:var(--brown-light);letter-spacing:.15em;margin-bottom:32px}
+  .login-field{width:100%;margin-bottom:14px}
+  .login-label{font-size:11px;color:var(--brown-light);letter-spacing:.15em;margin-bottom:6px;display:block}
+  .login-input{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(196,149,106,.35);border-radius:12px;padding:13px 16px;font-size:15px;font-family:'Zen Maru Gothic',sans-serif;color:white;outline:none;transition:border-color .2s}
+  .login-input::placeholder{color:rgba(196,149,106,.4)}
+  .login-input:focus{border-color:var(--peach)}
+  .login-btn{width:100%;margin-top:8px;padding:14px;border-radius:14px;border:none;cursor:pointer;font-size:16px;font-family:'Kaisei Opti',serif;letter-spacing:.1em;color:var(--brown-dark);background:linear-gradient(135deg,var(--peach),var(--brown-light));box-shadow:0 4px 20px rgba(242,184,128,.3);transition:transform .2s cubic-bezier(.34,1.56,.64,1),opacity .2s}
+  .login-btn:active{transform:scale(.96)}
+  .login-error{font-size:12px;color:#FF8A80;margin-top:12px;text-align:center;min-height:18px;letter-spacing:.05em}
+  .login-user-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:20px;padding:6px 14px;margin-bottom:28px;font-size:12px;color:var(--brown-light)}
+  .login-user-badge span{color:var(--peach);font-weight:700}
+  .logout-btn{background:none;border:none;cursor:pointer;font-size:11px;color:rgba(196,149,106,.5);margin-top:20px;letter-spacing:.1em;text-decoration:underline}
+
+  /* USER BADGE in memo header */
+  .user-name-badge{font-size:11px;color:var(--brown-mid);background:rgba(196,149,106,.15);border-radius:20px;padding:3px 10px;flex-shrink:0;margin-bottom:1px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #sharedMemo .user-name-badge{background:rgba(139,175,141,.2);color:var(--soft-green-dark)}
+
+  /* KEYFRAMES */
+  @keyframes bagBounce{0%{opacity:0;transform:translateY(-40px) scale(.7)}60%{transform:translateY(8px) scale(1.05)}80%{transform:translateY(-4px) scale(.98)}100%{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  @keyframes dotPulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2);background:var(--peach)}}
+  @keyframes itemIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="screen" id="login">
+  <div class="login-box">
+    <svg class="login-illust" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M26 28 Q26 16 36 16 Q46 16 46 28" stroke="#F2B880" stroke-width="2.8" stroke-linecap="round"/>
+      <rect x="14" y="28" width="44" height="32" rx="6" stroke="#F2B880" stroke-width="2.8"/>
+      <circle cx="36" cy="44" r="5" stroke="#F2B880" stroke-width="2.5"/>
+      <line x1="36" y1="49" x2="36" y2="54" stroke="#F2B880" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    <div class="login-title">おかいものメモ</div>
+    <div class="login-sub">家族専用アプリ</div>
+    <div id="loginUserBadge" style="display:none" class="login-user-badge">おかえり、<span id="loginUserName"></span>さん</div>
+    <div class="login-field" id="loginNameField">
+      <label class="login-label">あなたのお名前</label>
+      <input class="login-input" id="loginName" type="text" placeholder="例: おかあさん" maxlength="10" autocomplete="off">
+    </div>
+    <div class="login-field">
+      <label class="login-label">合言葉</label>
+      <input class="login-input" id="loginPass" type="password" placeholder="家族で決めた合言葉" maxlength="30" autocomplete="off">
+    </div>
+    <button class="login-btn" onclick="doLogin()">入る</button>
+    <div class="login-error" id="loginError"></div>
+    <button class="logout-btn" id="logoutBtn" style="display:none" onclick="doLogout()">別の名前でログイン</button>
+  </div>
+</div>
+
+<!-- SPLASH -->
+<div class="screen" id="splash">
+  <svg class="illust illust-splash" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M34 38 Q34 22 48 22 Q62 22 62 38" stroke="#F2B880" stroke-width="3.5" stroke-linecap="round"/>
+    <rect x="20" y="38" width="56" height="42" rx="7" stroke="#F2B880" stroke-width="3"/>
+    <line x1="48" y1="38" x2="48" y2="80" stroke="#F2B880" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.5"/>
+    <line x1="20" y1="54" x2="76" y2="54" stroke="#F2B880" stroke-width="1.5" opacity="0.4"/>
+    <path d="M48 60 L49.5 64.5 L54 64.5 L50.5 67.5 L52 72 L48 69 L44 72 L45.5 67.5 L42 64.5 L46.5 64.5 Z" stroke="#F2B880" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+  </svg>
+  <div class="splash-title">おかいものメモ</div>
+  <div class="splash-sub">家族のお買い物をスマートに</div>
+  <div class="splash-dots"><span></span><span></span><span></span></div>
+</div>
+
+<!-- TOP -->
+<div class="screen" id="top">
+  <div class="top-inner">
+    <header class="top-header">
+      <svg class="illust illust-top" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10 16 L14 16 L20 44 L50 44 L56 24 L18 24" stroke="#C4956A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M14 16 L10 10" stroke="#C4956A" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="24" cy="50" r="4" stroke="#C4956A" stroke-width="2.5"/>
+        <circle cx="44" cy="50" r="4" stroke="#C4956A" stroke-width="2.5"/>
+        <polyline points="26,32 31,37 40,27" stroke="#8BAF8D" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="top-title">おかいものメモ</div>
+      <div class="top-date" id="dateLabel"></div>
+    </header>
+    <div class="divider">
+      <div class="divider-line"></div>
+      <div class="divider-label">メモを選んでください</div>
+      <div class="divider-line"></div>
+    </div>
+    <div class="cards">
+      <button class="card card-personal" onclick="goToMemo('personal')">
+        <span class="card-badge">PERSONAL</span>
+        <svg class="illust illust-card" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="6" width="32" height="38" rx="4" stroke="#7A5C44" stroke-width="2.5"/>
+          <rect x="18" y="3" width="12" height="6" rx="3" stroke="#7A5C44" stroke-width="2"/>
+          <line x1="14" y1="19" x2="34" y2="19" stroke="#C4956A" stroke-width="2" stroke-linecap="round"/>
+          <line x1="14" y1="26" x2="34" y2="26" stroke="#C4956A" stroke-width="2" stroke-linecap="round"/>
+          <line x1="14" y1="33" x2="26" y2="33" stroke="#C4956A" stroke-width="2" stroke-linecap="round"/>
+          <line x1="31" y1="36" x2="38" y2="29" stroke="#C4956A" stroke-width="2" stroke-linecap="round"/>
+          <path d="M38 29 L41 26 L38 32 Z" stroke="#C4956A" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+        </svg>
+        <div class="card-title">じぶんのメモ</div>
+        <div class="card-desc">自分だけが見られる買い物リスト。<br>ひとりでのお買い物に。</div>
+        <span class="card-arrow">→</span>
+      </button>
+      <button class="card card-shared" onclick="goToMemo('shared')">
+        <span class="card-badge">FAMILY</span>
+        <svg class="illust illust-card" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="14" cy="13" r="5" stroke="#4A7D4C" stroke-width="2.5"/>
+          <path d="M6 32 Q6 22 14 22 Q22 22 22 32" stroke="#4A7D4C" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="34" cy="13" r="5" stroke="#4A7D4C" stroke-width="2.5"/>
+          <path d="M26 32 Q26 22 34 22 Q42 22 42 32" stroke="#4A7D4C" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="24" cy="30" r="4" stroke="#8BAF8D" stroke-width="2"/>
+          <path d="M17 44 Q17 37 24 37 Q31 37 31 44" stroke="#8BAF8D" stroke-width="2" stroke-linecap="round"/>
+          <path d="M24 18 L25 21 L28 21 L25.5 23 L26.5 26 L24 24.5 L21.5 26 L22.5 23 L20 21 L23 21 Z" stroke="#8BAF8D" stroke-width="1.5" fill="none" stroke-linejoin="round"/>
+        </svg>
+        <div class="card-title">家族のメモ</div>
+        <div class="card-desc">家族みんなで共有できるリスト。<br>リアルタイムで同期されます。</div>
+        <span class="card-arrow">→</span>
+      </button>
+    </div>
+    <footer class="top-footer">
+      <div class="top-footer-text">おかいものメモ · 家族専用</div>
+      <button class="notif-btn" id="notifBtn" onclick="requestNotifPermission()">🔔 通知をオンにする</button>
+    </footer>
+  </div>
+</div>
+
+<!-- PERSONAL MEMO -->
+<div class="screen memo-screen" id="personalMemo">
+  <div class="memo-header memo-header-personal">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <div class="memo-header-text">
+      <div class="memo-header-title">じぶんのメモ</div>
+      <div class="memo-header-count" id="personalCount">0 件</div>
+    </div>
+    <button class="history-btn" onclick="openHistory('personal')">🕐 履歴</button>
+    <div class="user-name-badge" id="personalUserBadge"></div>
+  </div>
+  <div class="memo-body" id="personalList"></div>
+  <div class="input-bar input-bar-personal">
+    <div class="input-row">
+      <input class="input-name" id="personalItemName" type="text" placeholder="商品名を入力…" maxlength="30">
+      <div class="input-qty-wrap">
+        <button class="input-qty-btn" onclick="changeInputQty('personal',1)">▲</button>
+        <div class="input-qty-num" id="personalQtyNum">1</div>
+        <button class="input-qty-btn" onclick="changeInputQty('personal',-1)">▼</button>
+      </div>
+      <button class="add-btn add-btn-personal" onclick="addItem('personal')">＋</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARED MEMO -->
+<div class="screen memo-screen" id="sharedMemo">
+  <div class="memo-header memo-header-shared">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <div class="memo-header-text">
+      <div class="memo-header-title">家族のメモ</div>
+      <div class="memo-header-count" id="sharedCount">0 件</div>
+    </div>
+    <button class="history-btn" onclick="openHistory('shared')">🕐 履歴</button>
+    <div class="user-name-badge" id="sharedUserBadge"></div>
+  </div>
+  <div class="memo-body" id="sharedList"></div>
+  <div class="input-bar input-bar-shared">
+    <div class="input-row">
+      <input class="input-name" id="sharedItemName" type="text" placeholder="商品名を入力…" maxlength="30">
+      <div class="input-qty-wrap">
+        <button class="input-qty-btn" onclick="changeInputQty('shared',1)">▲</button>
+        <div class="input-qty-num" id="sharedQtyNum">1</div>
+        <button class="input-qty-btn" onclick="changeInputQty('shared',-1)">▼</button>
+      </div>
+      <button class="add-btn add-btn-shared" onclick="addItem('shared')">＋</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="modal-overlay" id="historyModal" onclick="closeHistoryOutside(event)">
+  <div class="modal-sheet" id="historySheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="historyTitle">削除した履歴</div>
+      <button class="modal-close" onclick="closeHistory()">✕</button>
+    </div>
+    <button class="modal-clear-btn" onclick="clearHistory()">履歴をすべて削除</button>
+    <div class="modal-body" id="historyBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+  /* ══ Firebase 初期化 ══ */
+  firebase.initializeApp({
+    databaseURL: 'https://kaimono-memo-9aa92-default-rtdb.asia-southeast1.firebasedatabase.app'
+  });
+  var db = firebase.database();
+  var sharedRef     = db.ref('sharedItems');
+  var sharedHistRef = db.ref('sharedHistory');
+
+  /* ══════════════════════════════════
+     ▼▼▼ 合言葉をここに設定してください ▼▼▼
+     英数字のみ、大文字小文字を区別します
+  ══════════════════════════════════ */
+  var FAMILY_PASSPHRASE = 'okaimono2024';
+  /* ══════════════════════════════════
+     ▲▲▲ 合言葉の設定ここまで ▲▲▲
+  ══════════════════════════════════ */
+
+  /* ══ ログイン状態 ══ */
+  var currentUser = localStorage.getItem('user_name') || '';
+
+  function doLogin() {
+    var nameEl  = document.getElementById('loginName');
+    var passEl  = document.getElementById('loginPass');
+    var errEl   = document.getElementById('loginError');
+    var name    = (currentUser || nameEl.value.trim());
+    var pass    = passEl.value.trim();
+
+    if (!currentUser && !name) { errEl.textContent = '名前を入力してください'; return; }
+    if (!pass) { errEl.textContent = '合言葉を入力してください'; return; }
+    if (pass !== FAMILY_PASSPHRASE) {
+      errEl.textContent = '合言葉が違います';
+      passEl.value = '';
+      passEl.focus();
+      return;
+    }
+    // ログイン成功
+    if (!currentUser) {
+      currentUser = name;
+      localStorage.setItem('user_name', name);
+    }
+    errEl.textContent = '';
+    passEl.value = '';
+    enterApp();
+  }
+
+  function doLogout() {
+    currentUser = '';
+    localStorage.removeItem('user_name');
+    // ログイン画面をリセット
+    document.getElementById('loginName').value = '';
+    document.getElementById('loginPass').value = '';
+    document.getElementById('loginNameField').style.display = 'block';
+    document.getElementById('loginUserBadge').style.display = 'none';
+    document.getElementById('logoutBtn').style.display = 'none';
+    document.getElementById('loginError').textContent = '';
+    show('login');
+  }
+
+  function enterApp() {
+    // ユーザー名バッジを更新
+    ['personal','shared'].forEach(function(t) {
+      var el = document.getElementById(t+'UserBadge');
+      if (el) el.textContent = currentUser + 'さん';
+    });
+    show('top');
+  }
+
+  /* ══ ローカルデータ（個人用） ══ */
+  var personalData = JSON.parse(localStorage.getItem('memo_personal') || '[]');
+  var personalHist = JSON.parse(localStorage.getItem('hist_personal') || '[]');
+  var sharedData   = [];
+  var sharedHist   = [];
+  var inputQty     = { personal: 1, shared: 1 };
+
+  /* ══ Firebase リスナー ══ */
+  var knownItemIds = null; // 初回ロード済みIDセット（通知判定用）
+
+  sharedRef.on('value', function(snap) {
+    var val = snap.val();
+    var newData = val
+      ? Object.values(val).sort(function(a,b){ return (a.order||0)-(b.order||0); })
+      : [];
+
+    // 初回ロード時はIDを記憶するだけ（通知しない）
+    if (knownItemIds === null) {
+      knownItemIds = {};
+      newData.forEach(function(item){ knownItemIds[item.id] = true; });
+      sharedData = newData;
+      if (document.getElementById('sharedList')) renderList('shared');
+      updateSharedCount();
+      return;
+    }
+
+    // 差分チェック：自分以外が追加したアイテムに通知
+    newData.forEach(function(item) {
+      if (!knownItemIds[item.id]) {
+        // 新しいアイテム & 自分が追加したものでない
+        if (!item.addedBy || item.addedBy !== currentUser) {
+          var who = item.addedBy ? item.addedBy + 'さんが' : '家族が';
+          sendNotification(
+            '🛒 おかいものメモ',
+            who + '「' + item.name + '」を追加しました'
+          );
+        }
+        knownItemIds[item.id] = true;
+      }
+    });
+    // 削除されたIDを knownItemIds から除去
+    var newIds = {};
+    newData.forEach(function(i){ newIds[i.id]=true; });
+    knownItemIds = newIds;
+
+    sharedData = newData;
+    if (document.getElementById('sharedList')) renderList('shared');
+    updateSharedCount();
+  });
+
+  sharedHistRef.on('value', function(snap) {
+    var val = snap.val();
+    sharedHist = val
+      ? Object.values(val).sort(function(a,b){ return new Date(b.deletedAt)-new Date(a.deletedAt); })
+      : [];
+    if (document.getElementById('historyModal').classList.contains('open') && currentHistType==='shared') {
+      renderHistory('shared');
+    }
+  });
+
+  function updateSharedCount() {
+    var el = document.getElementById('sharedCount');
+    if (!el) return;
+    var active = sharedData.filter(function(i){return !i.done;}).length;
+    var done   = sharedData.filter(function(i){return i.done;}).length;
+    el.textContent = sharedData.length===0 ? '0 件' : active+' 件　完了 '+done+' 件';
+  }
+
+  function getData(type)  { return type==='shared' ? sharedData   : personalData; }
+  function getHist(type)  { return type==='shared' ? sharedHist   : personalHist; }
+
+  function savePersonal() { localStorage.setItem('memo_personal', JSON.stringify(personalData)); }
+  function savePersonalHist() { localStorage.setItem('hist_personal', JSON.stringify(personalHist)); }
+
+  /* ══ 画面管理 ══ */
+  var current = 'splash';
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+    current = id;
+  }
+
+  /* ══ 起動 ══ */
+  var DAYS = ['日','月','火','水','木','金','土'];
+  var now  = new Date();
+  document.getElementById('dateLabel').textContent =
+    now.getFullYear()+'年'+(now.getMonth()+1)+'月'+now.getDate()+'日（'+DAYS[now.getDay()]+'）';
+
+  show('splash');
+  setTimeout(function() {
+    document.getElementById('splash').classList.add('out');
+    setTimeout(function() {
+      document.getElementById('splash').style.display='none';
+      if (currentUser) {
+        // ログイン済み → ログイン画面を「おかえり」モードで表示
+        document.getElementById('loginUserName').textContent = currentUser;
+        document.getElementById('loginUserBadge').style.display = 'flex';
+        document.getElementById('loginNameField').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'block';
+        show('login');
+      } else {
+        show('login');
+      }
+    }, 700);
+  }, 2500);
+
+  // Enterキーでログイン
+  document.getElementById('loginPass').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('loginName').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('loginPass').focus();
+  });
+
+  /* ══ 遷移 ══ */
+  function goToMemo(type) {
+    show(type==='personal' ? 'personalMemo' : 'sharedMemo');
+    renderList(type);
+  }
+  function goBack() {
+    var el = document.getElementById(current);
+    el.classList.add('slide-out');
+    setTimeout(function(){ el.classList.remove('slide-out'); show('top'); }, 380);
+  }
+
+  /* ══ 個数入力 ══ */
+  function changeInputQty(type, delta) {
+    inputQty[type] = Math.max(1, Math.min(99, (inputQty[type]||1)+delta));
+    document.getElementById(type+'QtyNum').textContent = inputQty[type];
+  }
+
+  /* ══ レンダリング ══ */
+  function renderList(type) {
+    var listEl  = document.getElementById(type+'List');
+    var countEl = document.getElementById(type+'Count');
+    var items   = getData(type);
+    var active  = items.filter(function(i){return !i.done;});
+    var done    = items.filter(function(i){return  i.done;});
+
+    countEl.textContent = items.length===0 ? '0 件'
+      : active.length+' 件　完了 '+done.length+' 件';
+
+    if (items.length===0) {
+      listEl.innerHTML = '<div class="empty-state"><span class="empty-icon">'
+        +(type==='personal'?'📋':'🛒')+'</span>まだ何も追加されていません<br>下の入力欄から追加しましょう</div>';
+      return;
+    }
+    var html = '';
+    if (active.length>0) {
+      html += '<div class="section-label">🛒 かうもの</div>';
+      active.forEach(function(item){ html += itemHTML(item,type); });
+    }
+    if (done.length>0) {
+      html += '<div class="section-label">✅ かごに入れた</div>';
+      done.forEach(function(item){ html += itemHTML(item,type); });
+    }
+    listEl.innerHTML = html;
+  }
+
+  function itemHTML(item, type) {
+    var doneClass = item.done ? ' done' : '';
+    var checkmark = item.done ? '✓' : '';
+    var qty = item.qty || 1;
+    var handle = item.done ? '' : '<div class="drag-handle" data-id="'+item.id+'" data-type="'+type+'">⠿</div>';
+    return '<div class="item item-'+type+doneClass+'" id="item-'+item.id+'" data-id="'+item.id+'" data-type="'+type+'">'
+      +handle
+      +'<button class="check-btn" onclick="toggleItem(\''+type+'\',\''+item.id+'\')">'+checkmark+'</button>'
+      +'<div class="item-main"><div class="item-name">'+esc(item.name)+'</div></div>'
+      +'<div class="qty-stepper">'
+      +'<button class="qty-btn" onclick="changeQty(\''+type+'\',\''+item.id+'\',1)">▲</button>'
+      +'<div class="qty-stepper-num">'+qty+'</div>'
+      +'<button class="qty-btn" onclick="changeQty(\''+type+'\',\''+item.id+'\',-1)">▼</button>'
+      +'</div>'
+      +'<button class="delete-btn" onclick="deleteItem(\''+type+'\',\''+item.id+'\')">✕</button>'
+      +'</div>';
+  }
+
+  /* ══ 追加 ══ */
+  function addItem(type) {
+    var nameEl = document.getElementById(type+'ItemName');
+    var name   = nameEl.value.trim();
+    if (!name) { nameEl.focus(); return; }
+    var newItem = { id: Date.now().toString(), name: name, qty: inputQty[type], done: false, order: Date.now() };
+
+    if (type==='shared') {
+      newItem.addedBy = currentUser || '';
+      sharedRef.child(newItem.id).set(newItem);
+    } else {
+      personalData.unshift(newItem);
+      savePersonal();
+      renderList('personal');
+    }
+    nameEl.value = '';
+    inputQty[type] = 1;
+    document.getElementById(type+'QtyNum').textContent = '1';
+    nameEl.focus();
+    showToast('✓ 追加しました');
+  }
+
+  /* ══ 個数変更 ══ */
+  function changeQty(type, id, delta) {
+    if (type==='shared') {
+      var item = sharedData.find(function(i){return i.id===id;});
+      if (!item) return;
+      sharedRef.child(id).update({ qty: Math.max(1,Math.min(99,(item.qty||1)+delta)) });
+    } else {
+      var item = personalData.find(function(i){return i.id===id;});
+      if (!item) return;
+      item.qty = Math.max(1,Math.min(99,(item.qty||1)+delta));
+      savePersonal(); renderList('personal');
+    }
+  }
+
+  /* ══ チェック ══ */
+  function toggleItem(type, id) {
+    if (type==='shared') {
+      var item = sharedData.find(function(i){return i.id===id;});
+      if (!item) return;
+      var newOrder = !item.done ? Date.now()+1000000 : Date.now();
+      sharedRef.child(id).update({ done: !item.done, order: newOrder });
+    } else {
+      var idx = personalData.findIndex(function(i){return i.id===id;});
+      if (idx===-1) return;
+      personalData[idx].done = !personalData[idx].done;
+      var it = personalData.splice(idx,1)[0];
+      it.done ? personalData.push(it) : personalData.unshift(it);
+      savePersonal(); renderList('personal');
+    }
+  }
+
+  /* ══ 削除 ══ */
+  function deleteItem(type, id) {
+    var items = getData(type);
+    var item  = items.find(function(i){return i.id===id;});
+    if (!item) return;
+    var el = document.getElementById('item-'+id);
+    if (el) el.classList.add('removing');
+    var histItem = Object.assign({}, item, { deletedAt: new Date().toISOString() });
+
+    setTimeout(function() {
+      if (type==='shared') {
+        sharedRef.child(id).remove();
+        var histId = 'h'+Date.now().toString();
+        histItem.histId = histId;
+        sharedHistRef.child(histId).set(histItem);
+        sharedHistRef.once('value', function(snap){
+          var all = snap.val();
+          if (all) {
+            var keys = Object.keys(all).sort(function(a,b){
+              return new Date(all[a].deletedAt)-new Date(all[b].deletedAt);
+            });
+            if (keys.length>50) keys.slice(0,keys.length-50).forEach(function(k){ sharedHistRef.child(k).remove(); });
+          }
+        });
+      } else {
+        personalHist.unshift(histItem);
+        if (personalHist.length>50) personalHist.pop();
+        savePersonalHist();
+        personalData = personalData.filter(function(i){return i.id!==id;});
+        savePersonal(); renderList('personal');
+      }
+    }, 280);
+  }
+
+  /* ══ 履歴モーダル ══ */
+  var currentHistType = 'personal';
+  function openHistory(type) {
+    currentHistType = type;
+    var sheet = document.getElementById('historySheet');
+    sheet.className = 'modal-sheet modal-sheet-'+type;
+    document.getElementById('historyTitle').textContent =
+      type==='personal' ? '📝 じぶんのメモ — 削除履歴' : '家族のメモ — 削除履歴';
+    renderHistory(type);
+    document.getElementById('historyModal').classList.add('open');
+  }
+  function closeHistory() { document.getElementById('historyModal').classList.remove('open'); }
+  function closeHistoryOutside(e) { if (e.target===document.getElementById('historyModal')) closeHistory(); }
+  function clearHistory() {
+    if (currentHistType==='shared') {
+      sharedHistRef.remove();
+    } else {
+      personalHist = []; savePersonalHist(); renderHistory('personal');
+    }
+    showToast('履歴を削除しました');
+  }
+
+  function renderHistory(type) {
+    var body  = document.getElementById('historyBody');
+    var items = getHist(type);
+    if (items.length===0) { body.innerHTML='<div class="history-empty">削除した商品はありません</div>'; return; }
+    body.innerHTML = items.map(function(item) {
+      var d = new Date(item.deletedAt);
+      var ds = (d.getMonth()+1)+'/'+d.getDate()+' '+d.getHours()+':'+(('0'+d.getMinutes()).slice(-2));
+      return '<div class="history-item">'
+        +'<div class="history-icon">🗑️</div>'
+        +'<div class="history-main">'
+        +'<div class="history-name">'+esc(item.name)+'</div>'
+        +'<div class="history-meta">'+(item.qty||1)+'個 · '+ds+'に削除</div>'
+        +'</div>'
+        +'<button class="history-restore-btn" onclick="restoreItem(\''+type+'\',\''+item.id+'\',\''+(item.histId||'')+'\')">戻す</button>'
+        +'</div>';
+    }).join('');
+  }
+
+  function restoreItem(type, id, histId) {
+    var items = getHist(type);
+    var idx   = items.findIndex(function(i){return i.id===id;});
+    if (idx===-1) return;
+    var item  = Object.assign({}, items[idx], { done:false, id:Date.now().toString(), order:Date.now() });
+    delete item.deletedAt; delete item.histId;
+
+    if (type==='shared') {
+      sharedRef.child(item.id).set(item);
+      if (histId) sharedHistRef.child(histId).remove();
+    } else {
+      personalData.unshift(item);
+      savePersonal();
+      personalHist.splice(idx,1);
+      savePersonalHist();
+      renderHistory('personal');
+      renderList('personal');
+    }
+    showToast('✓ リストに戻しました');
+    closeHistory();
+  }
+
+  /* ══ Enter ══ */
+  ['personal','shared'].forEach(function(type) {
+    document.getElementById(type+'ItemName').addEventListener('keydown', function(e){
+      if (e.key==='Enter') addItem(type);
+    });
+  });
+
+  /* ══ ユーティリティ ══ */
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  var toastTimer;
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 1800);
+  }
+
+  /* ══ ドラッグ&ドロップ ══ */
+  var drag = {
+    el:null, id:null, type:null,
+    overEl:null, active:false, timer:null
+  };
+
+  function attachDragListeners(type) {
+    var listEl = document.getElementById(type+'List');
+    if (!listEl) return;
+
+    listEl.addEventListener('touchstart', function(e) {
+      var handle = e.target.closest('.drag-handle');
+      if (!handle) return;
+      var itemEl = handle.closest('.item');
+      if (!itemEl || itemEl.classList.contains('done')) return;
+      drag.timer = setTimeout(function() {
+        drag.el   = itemEl;
+        drag.id   = itemEl.dataset.id;
+        drag.type = type;
+        drag.active = true;
+        itemEl.classList.add('dragging');
+        if (navigator.vibrate) navigator.vibrate(30);
+      }, 160);
+    }, { passive: true });
+
+    listEl.addEventListener('touchmove', function(e) {
+      clearTimeout(drag.timer);
+      if (!drag.active) return;
+      e.preventDefault();
+      var y = e.touches[0].clientY;
+      var els = listEl.querySelectorAll('.item:not(.done):not(.dragging)');
+      var newOver = null;
+      els.forEach(function(el) {
+        var r = el.getBoundingClientRect();
+        if (y >= r.top && y <= r.bottom) newOver = el;
+      });
+      if (drag.overEl && drag.overEl !== newOver) drag.overEl.classList.remove('drag-over');
+      if (newOver) { newOver.classList.add('drag-over'); drag.overEl = newOver; }
+    }, { passive: false });
+
+    listEl.addEventListener('touchend', function() {
+      clearTimeout(drag.timer);
+      if (!drag.active) return;
+      if (drag.overEl) {
+        drag.overEl.classList.remove('drag-over');
+        reorderItems(drag.type, drag.id, drag.overEl.dataset.id);
+      }
+      if (drag.el) drag.el.classList.remove('dragging');
+      drag.el=null; drag.id=null; drag.type=null; drag.overEl=null; drag.active=false;
+    });
+
+    listEl.addEventListener('touchcancel', function() {
+      clearTimeout(drag.timer);
+      if (drag.el) drag.el.classList.remove('dragging');
+      if (drag.overEl) drag.overEl.classList.remove('drag-over');
+      drag.el=null; drag.id=null; drag.type=null; drag.overEl=null; drag.active=false;
+    });
+  }
+
+  function reorderItems(type, dragId, targetId) {
+    if (dragId === targetId) return;
+    if (type === 'personal') {
+      var active = personalData.filter(function(i){return !i.done;});
+      var done   = personalData.filter(function(i){return  i.done;});
+      var fi = active.findIndex(function(i){return i.id===dragId;});
+      var ti = active.findIndex(function(i){return i.id===targetId;});
+      if (fi===-1||ti===-1) return;
+      var moved = active.splice(fi,1)[0];
+      active.splice(ti,0,moved);
+      active.forEach(function(item,i){ item.order=i; });
+      personalData = active.concat(done);
+      savePersonal();
+      renderList('personal');
+      attachDragListeners('personal');
+    } else {
+      var active = sharedData.filter(function(i){return !i.done;});
+      var fi = active.findIndex(function(i){return i.id===dragId;});
+      var ti = active.findIndex(function(i){return i.id===targetId;});
+      if (fi===-1||ti===-1) return;
+      var moved = active.splice(fi,1)[0];
+      active.splice(ti,0,moved);
+      var updates = {};
+      active.forEach(function(item,i){ updates[item.id+'/order']=i; });
+      sharedRef.update(updates);
+    }
+    showToast('並び替えました');
+  }
+
+  // renderList 後にドラッグリスナーを付け直す
+  var _origRenderList = renderList;
+  renderList = function(type) {
+    _origRenderList(type);
+    attachDragListeners(type);
+  };
+
+  /* ══ 通知 ══ */
+  function updateNotifBtn() {
+    var btn = document.getElementById('notifBtn');
+    if (!btn) return;
+    if (!('Notification' in window)) {
+      btn.classList.add('hidden'); return;
+    }
+    if (Notification.permission === 'granted') {
+      btn.textContent = '🔔 通知オン中';
+      btn.classList.add('granted');
+    } else if (Notification.permission === 'denied') {
+      btn.textContent = '🔕 通知がブロックされています';
+      btn.classList.add('hidden');
+    } else {
+      btn.textContent = '🔔 通知をオンにする';
+      btn.classList.remove('granted','hidden');
+    }
+  }
+
+  function requestNotifPermission() {
+    if (!('Notification' in window)) {
+      showToast('このブラウザは通知に非対応です');
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      showToast('すでに通知はオンです');
+      return;
+    }
+    Notification.requestPermission().then(function(result) {
+      updateNotifBtn();
+      if (result === 'granted') {
+        showToast('✓ 通知をオンにしました');
+        // テスト通知
+        new Notification('おかいものメモ', {
+          body: '通知が有効になりました！',
+          icon: 'https://shu-boomk.github.io/kaimono-list-memo/icon.png'
+        });
+      } else {
+        showToast('通知が許可されませんでした');
+      }
+    });
+  }
+
+  function sendNotification(title, body) {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    // アプリがフォアグラウンドのときはトーストだけ表示
+    if (!document.hidden) {
+      showToast(body);
+      return;
+    }
+    try {
+      new Notification(title, {
+        body: body,
+        icon: 'https://shu-boomk.github.io/kaimono-list-memo/icon.png',
+        badge: 'https://shu-boomk.github.io/kaimono-list-memo/icon.png',
+        tag: 'kaimono-' + Date.now(),
+        renotify: true
+      });
+    } catch(e) {}
+  }
+
+  // enterApp時に通知ボタン状態を更新
+  var _origEnterApp = enterApp;
+  enterApp = function() {
+    _origEnterApp();
+    updateNotifBtn();
+  };
+
+  /* ══ PWA manifest ══ */
+  (function() {
+    try {
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">'
+        +'<rect width="512" height="512" rx="112" fill="#3D2B1F"/>'
+        +'<path d="M148 210 L160 390 Q162 410 182 410 L330 410 Q350 410 352 390 L364 210 Z" fill="#F2C48A"/>'
+        +'<path d="M200 210 Q200 155 256 155 Q312 155 312 210" fill="none" stroke="#F2C48A" stroke-width="22" stroke-linecap="round"/>'
+        +'<circle cx="358" cy="168" r="52" fill="#8BAF8D"/>'
+        +'<polyline points="334,168 351,185 385,151" fill="none" stroke="white" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>'
+        +'</svg>';
+      var uri = 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg)));
+      var m = { name:'おかいものメモ', short_name:'おかいものメモ', start_url:'./',
+        display:'standalone', background_color:'#3D2B1F', theme_color:'#3D2B1F',
+        orientation:'portrait', lang:'ja',
+        icons:[{src:uri,sizes:'192x192',type:'image/svg+xml',purpose:'any maskable'},
+               {src:uri,sizes:'512x512',type:'image/svg+xml',purpose:'any maskable'}] };
+      var b = new Blob([JSON.stringify(m)],{type:'application/manifest+json'});
+      document.getElementById('manifestLink').setAttribute('href',URL.createObjectURL(b));
+    } catch(e){}
+  })();
+</script>
+</body>
+</html>
